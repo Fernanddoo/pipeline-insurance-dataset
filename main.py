@@ -66,12 +66,14 @@ preprocessor = ColumnTransformer(
 modelos_config = {
     "Ridge": {
         "model": Ridge(random_state=42),
+        # hiperparametros 
         "params": {
             "regressor__alpha": optuna.distributions.FloatDistribution(0.1, 10.0, log=True)
         }
     },
     "Random Forest": {
         "model": RandomForestRegressor(random_state=42, n_jobs=-1),
+        # hiperparametros 
         "params": {
             "regressor__n_estimators": optuna.distributions.IntDistribution(50, 300),
             "regressor__max_depth": optuna.distributions.IntDistribution(3, 15),
@@ -80,6 +82,7 @@ modelos_config = {
     },
     "XGBoost": {
         "model": XGBRegressor(random_state=42, n_jobs=-1, verbosity=0),
+        # hiperparametros 
         "params": {
             "regressor__n_estimators": optuna.distributions.IntDistribution(100, 500),
             "regressor__max_depth": optuna.distributions.IntDistribution(3, 10),
@@ -95,15 +98,18 @@ resultados_selection = []
 
 print("começando otimização e seleção dos modelos")
 
+# aqui roda os modelos e vê qual se sai melhor, rodando mais de uma vez, não apresentou decoreba (overfitting)
 for nome, config in modelos_config.items():
     print(f"Otimizando: {nome}...")
     
+    # inicia a pipeline
     pipeline = Pipeline([
         ('preprocessor', preprocessor),
         ('regressor', config["model"])
     ])
     
     # OptunaSearchCV
+    # testando parametros, 20 no caso, de acordo com o numero de trials
     search = OptunaSearchCV(
         estimator=pipeline,
         param_distributions=config["params"],
@@ -115,8 +121,10 @@ for nome, config in modelos_config.items():
         verbose=0
     )
     
+    # e aqui faz o treino
     search.fit(X_train_full, y_train_full)
     
+    # mostra qual se saiu melhor
     melhores_modelos[nome] = search.best_estimator_
     resultados_selection.append({
         "Modelo": nome,
@@ -211,7 +219,7 @@ sns.boxplot(y=scores_nested, ax=ax1, color='lightblue', width=0.3)
 sns.stripplot(y=scores_nested, ax=ax1, color='red', size=8, jitter=True)
 ax1.set_title('Estabilidade da Validação Cruzada ($R^2$)', fontsize=14)
 ax1.set_ylabel('Score $R^2$')
-ax1.set_xlabel('Folds (5 iterações)')
+ax1.set_xlabel('5 iterações')
 # valor medio
 ax1.text(0.35, mean_r2, f'Média: {mean_r2:.3f}', fontsize=12, fontweight='bold', color='darkblue')
 
@@ -221,8 +229,8 @@ sns.scatterplot(x=y, y=y_pred_cv, ax=ax2, alpha=0.5, edgecolor=None, color='teal
 # linha de referencia perfeita (y = x)
 min_val, max_val = min(y.min(), y_pred_cv.min()), max(y.max(), y_pred_cv.max())
 ax2.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Previsão Perfeita')
-ax2.set_title('Valores Reais vs. Preditos (Out-of-Fold)', fontsize=14)
-ax2.set_xlabel('Valor Real (Charges)')
+ax2.set_title('Valores Reais vs. Preditos', fontsize=14)
+ax2.set_xlabel('Valor Real')
 ax2.set_ylabel('Valor Predito pelo Modelo')
 ax2.legend()
 
@@ -231,7 +239,7 @@ residuos = y - y_pred_cv
 ax3 = axes[1, 0]
 sns.histplot(residuos, kde=True, ax=ax3, color='purple', bins=30)
 ax3.axvline(x=0, color='red', linestyle='--')
-ax3.set_title('Distribuição dos Erros (Resíduos)', fontsize=14)
+ax3.set_title('Distribuição dos Erros', fontsize=14)
 ax3.set_xlabel('Erro (Real - Predito)')
 ax3.set_ylabel('Frequência')
 
